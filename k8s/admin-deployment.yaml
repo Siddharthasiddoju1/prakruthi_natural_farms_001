@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prakruthi-admin
+  namespace: prakruthi
+  labels:
+    app: prakruthi-admin
+    tier: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prakruthi-admin
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: prakruthi-admin
+        tier: frontend
+    spec:
+      containers:
+        - name: admin
+          image: <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/prakruthi/admin:latest
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prakruthi-admin-service
+  namespace: prakruthi
+  labels:
+    app: prakruthi-admin
+spec:
+  type: ClusterIP
+  selector:
+    app: prakruthi-admin
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP

@@ -1,0 +1,151 @@
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: #f4f7f4;
+  color: #1a2a1a;
+}
+
+.layout {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+header {
+  margin-bottom: 18px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #d8e8d8;
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid transparent;
+}
+
+.toast-success {
+  background: #ebf8ee;
+  color: #1f6b2a;
+  border-color: #b8e3c0;
+}
+
+.toast-error {
+  background: #fdeeee;
+  color: #9e2d28;
+  border-color: #f0c2bf;
+}
+
+.toast button {
+  background: transparent;
+  color: inherit;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.action-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.export-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr auto;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eef3ee;
+  font-size: 0.92rem;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.product-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.3fr) 1fr 1fr auto auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #eef3ee;
+}
+
+.product-row:last-child {
+  border-bottom: 0;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+input,
+select {
+  width: 100%;
+  border: 1px solid #cfe2cf;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 0.92rem;
+  background: #fff;
+}
+
+.invalid {
+  border-color: #d4544c;
+  background: #fff7f7;
+}
+
+.create-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  align-items: center;
+}
+
+.create-description {
+  grid-column: 1 / -1;
+}
+
+.inline-error {
+  color: #b63d37;
+  font-size: 0.84rem;
+  margin: 0;
+}
+
+.product-error {
+  grid-column: 1 / -1;
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  background: #2f8f3b;
+  color: #fff;
+  padding: 8px 12px;
+}

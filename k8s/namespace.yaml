@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prakruthi
+  labels:
+    app.kubernetes.io/name: prakruthi
+    app.kubernetes.io/part-of: prakruthi-natural-farms

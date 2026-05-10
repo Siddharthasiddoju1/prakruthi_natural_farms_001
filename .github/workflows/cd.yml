@@ -1,0 +1,167 @@
+# ============================================
+# CD Pipeline - Deploy to AWS EKS
+# Triggers on push to main (after CI passes)
+# ============================================
+name: CD Pipeline - Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # Manual trigger
+
+env:
+  AWS_REGION: ap-south-1
+  EKS_CLUSTER_NAME: prakruthi-eks
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
+
+jobs:
+  # ============================================
+  # Build & Push Docker Images to ECR
+  # ============================================
+  build-and-push:
+    name: Build & Push to ECR
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [api, web, admin]
+        include:
+          - service: api
+            dockerfile: services/api/Dockerfile
+            ecr_repo: prakruthi/api
+          - service: web
+            dockerfile: apps/web/Dockerfile
+            ecr_repo: prakruthi/web
+          - service: admin
+            dockerfile: apps/admin/Dockerfile
+            ecr_repo: prakruthi/admin
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.ECR_REGISTRY }}/${{ matrix.ecr_repo }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VITE_API_URL=https://api.prakruthi.com
+
+  # ============================================
+  # Deploy to EKS
+  # ============================================
+  deploy:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      - name: Replace image tags in manifests
+        run: |
+          export IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
+          export AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
+          
+          # Update image references in K8s manifests
+          sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s/*.yaml
+          sed -i "s|:latest|:${IMAGE_TAG}|g" k8s/*.yaml
+
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/secrets-configmap.yaml
+          kubectl apply -f k8s/api-deployment.yaml
+          kubectl apply -f k8s/web-deployment.yaml
+          kubectl apply -f k8s/admin-deployment.yaml
+          kubectl apply -f k8s/ingress.yaml
+
+      - name: Run database migrations
+        run: |
+          export IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
+          export AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
+          sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s/jobs.yaml
+          sed -i "s|:latest|:${IMAGE_TAG}|g" k8s/jobs.yaml
+          
+          # Delete old job if exists
+          kubectl delete job prakruthi-db-migrate -n prakruthi --ignore-not-found
+          kubectl apply -f k8s/jobs.yaml
+          
+          # Wait for migration to complete
+          kubectl wait --for=condition=complete --timeout=120s job/prakruthi-db-migrate -n prakruthi
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/prakruthi-api -n prakruthi --timeout=300s
+          kubectl rollout status deployment/prakruthi-web -n prakruthi --timeout=300s
+          kubectl rollout status deployment/prakruthi-admin -n prakruthi --timeout=300s
+
+      - name: Health check
+        run: |
+          # Get the ALB URL
+          ALB_URL=$(kubectl get ingress prakruthi-ingress -n prakruthi -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "ALB URL: ${ALB_URL}"
+          
+          # Wait and check health
+          sleep 30
+          curl -sf "http://${ALB_URL}/health" || echo "Health check pending - DNS propagation may take time"
+
+  # ============================================
+  # Post-Deploy Notifications
+  # ============================================
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always()
+    steps:
+      - name: Notify on success
+        if: needs.deploy.result == 'success'
+        run: echo "Deployment successful! 🚀"
+
+      - name: Notify on failure
+        if: needs.deploy.result == 'failure'
+        run: |
+          echo "Deployment failed! Check logs."
+          exit 1

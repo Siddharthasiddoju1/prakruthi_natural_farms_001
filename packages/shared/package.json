@@ -1,0 +1,10 @@
+{
+  "name": "@prakruthi/shared",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "peerDependencies": {
+    "react": "^18.3.1"
+  }
+}

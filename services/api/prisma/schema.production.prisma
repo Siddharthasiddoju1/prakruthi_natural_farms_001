@@ -1,0 +1,147 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "binary"
+}
+
+// For production: uses DATABASE_URL environment variable pointing to PostgreSQL
+// For local dev: can use SQLite or PostgreSQL via docker-compose
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum OrderStatus {
+  PLACED
+  PACKED
+  OUT_FOR_DELIVERY
+  DELIVERED
+}
+
+enum ScheduleType {
+  DAILY
+  ALTERNATE_DAYS
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  UPI
+  CARD
+  COD
+}
+
+enum ItemType {
+  ONE_TIME
+  SUBSCRIPTION
+}
+
+model Customer {
+  id          String         @id @default(uuid())
+  mobile      String         @unique
+  name        String
+  email       String?
+  isVerified  Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  addresses   Address[]
+  orders      Order[]
+  carts       Cart[]
+  subscriptions Subscription[]
+}
+
+model Address {
+  id         String   @id @default(uuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  line1      String
+  line2      String?
+  landmark   String?
+  area       String
+  city       String
+  pincode    String
+  isDefault  Boolean  @default(false)
+  orders     Order[]
+}
+
+model Product {
+  id           String    @id @default(uuid())
+  name         String
+  category     String
+  description  String?
+  price        Decimal
+  unit         String
+  stockQty     Int       @default(0)
+  organicTag   String?
+  isActive     Boolean   @default(true)
+  cartItems    CartItem[]
+  orderItems   OrderItem[]
+  subscriptions Subscription[]
+}
+
+model Cart {
+  id         String     @id @default(uuid())
+  customerId String
+  customer   Customer   @relation(fields: [customerId], references: [id])
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  items      CartItem[]
+
+  @@index([customerId])
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  itemType  ItemType @default(ONE_TIME)
+
+  @@unique([cartId, productId, itemType])
+}
+
+model Subscription {
+  id             String             @id @default(uuid())
+  customerId     String
+  customer       Customer           @relation(fields: [customerId], references: [id])
+  productId      String
+  product        Product            @relation(fields: [productId], references: [id])
+  quantityLiters Decimal
+  scheduleType   ScheduleType
+  morningDelivery Boolean           @default(true)
+  status         SubscriptionStatus @default(ACTIVE)
+  startDate      DateTime           @default(now())
+}
+
+model Order {
+  id            String        @id @default(uuid())
+  customerId    String
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  addressId     String
+  address       Address       @relation(fields: [addressId], references: [id])
+  subtotal      Decimal
+  deliveryFee   Decimal
+  total         Decimal
+  paymentMethod PaymentMethod
+  paymentStatus String
+  orderStatus   OrderStatus
+  deliverySlot  String?
+  createdAt     DateTime      @default(now())
+  items         OrderItem[]
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Decimal
+  itemType  ItemType @default(ONE_TIME)
+}
