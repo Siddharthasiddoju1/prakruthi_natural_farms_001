@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: admin
-          image: <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/prakruthi/admin:latest
+          image: 266579819838.dkr.ecr.ap-south-1.amazonaws.com/prakruthi/admin:latest
           ports:
             - containerPort: 80
               protocol: TCP
