@@ -74,7 +74,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            VITE_API_URL=https://api.prakruthi.com
+            VITE_API_URL=http://32.197.221.45:30400
 
   # ============================================
   # Deploy to EKS
