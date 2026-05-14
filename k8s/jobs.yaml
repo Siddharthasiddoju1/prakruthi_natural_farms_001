@@ -12,7 +12,7 @@ spec:
     spec:
       containers:
         - name: migrate
-          image: <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/prakruthi/api:latest
+          image: 266579819838.dkr.ecr.ap-south-1.amazonaws.com/prakruthi/api:latest
           command: ["npx", "prisma", "migrate", "deploy"]
           envFrom:
             - secretRef:
