@@ -10,9 +10,9 @@ on:
   workflow_dispatch:  # Manual trigger
 
 env:
-  AWS_REGION: ap-south-1
+  AWS_REGION: us-east-1
   EKS_CLUSTER_NAME: prakruthi-eks
-  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
 
 jobs:
   # ============================================
