@@ -91,13 +91,15 @@ jobs:
       # ---------------- SSH SETUP ----------------
       - name: Setup SSH key
         run: |
-          mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
           chmod 600 key.pem
 
       # ---------------- DEPLOY ----------------
       - name: Deploy to K3S server
         run: |
+
+          echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
+          chmod 600 key.pem
           ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@${{ vars.K3S_SERVER }} << 'EOF'
 
           export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
