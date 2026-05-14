@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/prakruthi/api:latest
+          image: 266579819838.dkr.ecr.ap-south-1.amazonaws.com/prakruthi/api:latest
           ports:
             - containerPort: 4000
               protocol: TCP
