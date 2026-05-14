@@ -36,7 +36,6 @@ RUN addgroup -g 1001 -S appgroup && \
 COPY --from=builder /app/services/api/dist ./dist
 COPY --from=builder /app/services/api/prisma ./prisma
 COPY --from=builder /app/services/api/package.json ./
-COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/services/api/node_modules/.prisma ./node_modules/.prisma
 
 # Set environment
