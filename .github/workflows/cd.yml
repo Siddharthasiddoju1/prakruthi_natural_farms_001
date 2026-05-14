@@ -98,7 +98,7 @@ jobs:
       # ---------------- DEPLOY ----------------
       - name: Deploy to K3S server
         run: |
-          ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@${{ env.K3S_SERVER }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@${{ vars.K3S_SERVER }} << 'EOF'
 
           export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
@@ -144,9 +144,9 @@ jobs:
         run: |
           echo "Checking API health..."
 
-          curl -sf http://${{ env.K3S_SERVER }}:30400/health || echo "NodePort not ready"
+          curl -sf http://${{ vars.K3S_SERVER }}:30400/health || echo "NodePort not ready"
 
-          curl -sf http://${{ env.K3S_SERVER }}/health || echo "Ingress not ready"
+          curl -sf http://${{ vars.K3S_SERVER }}/health || echo "Ingress not ready"
   # ============================================
   # Post-Deploy Notifications
   # ============================================
