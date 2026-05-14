@@ -77,65 +77,51 @@ jobs:
             VITE_API_URL=http://32.197.221.45:30400
 
   # ============================================
-  # Deploy to EKS
-  # ============================================
+# DEPLOY (EKS REPLACED WITH K3S ONLY)
+# ============================================
   deploy:
-    name: Deploy to EKS
+    name: Deploy to K3S
     runs-on: ubuntu-latest
-    needs: [build-and-push]
-    environment: production
+    needs: build-and-push
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
-
-      - name: Replace image tags in manifests
+      # ---------------- SSH KEY ----------------
+      - name: Setup SSH
         run: |
-          export IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
-          export AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
-          
-          # Update image references in K8s manifests
-          sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s/*.yaml
-          sed -i "s|:latest|:${IMAGE_TAG}|g" k8s/*.yaml
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
+          chmod 600 key.pem
 
-      - name: Apply Kubernetes manifests
+      # ---------------- RUN KUBECTL ON K3S SERVER ----------------
+      - name: Deploy to K3S (same as EKS kubectl apply)
         run: |
-          kubectl apply -f k8s/namespace.yaml
-          kubectl apply -f k8s/secrets-configmap.yaml
-          kubectl apply -f k8s/api-deployment.yaml
-          kubectl apply -f k8s/web-deployment.yaml
-          kubectl apply -f k8s/admin-deployment.yaml
-          kubectl apply -f k8s/ingress.yaml
+          ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@${{ env.K3S_SERVER }} << 'EOF'
 
-      - name: Run database migrations
-        run: |
-          export IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
-          export AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
-          sed -i "s|<AWS_ACCOUNT_ID>|${AWS_ACCOUNT_ID}|g" k8s/jobs.yaml
-          sed -i "s|:latest|:${IMAGE_TAG}|g" k8s/jobs.yaml
-          
-          # Delete old job if exists
-          kubectl delete job prakruthi-db-migrate -n prakruthi --ignore-not-found
-          kubectl apply -f k8s/jobs.yaml
-          
-          # Wait for migration to complete
-          kubectl wait --for=condition=complete --timeout=120s job/prakruthi-db-migrate -n prakruthi
+          export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
-      - name: Verify deployment
-        run: |
+          echo "Applying Kubernetes manifests..."
+
+          kubectl apply -f /home/ubuntu/k8s/namespace.yaml
+          kubectl apply -f /home/ubuntu/k8s/secrets-configmap.yaml
+
+          kubectl apply -f /home/ubuntu/k8s/api-deployment.yaml
+          kubectl apply -f /home/ubuntu/k8s/web-deployment.yaml
+          kubectl apply -f /home/ubuntu/k8s/admin-deployment.yaml
+
+          kubectl apply -f /home/ubuntu/k8s/ingress.yaml
+
+          echo "Waiting for rollout..."
+
           kubectl rollout status deployment/prakruthi-api -n prakruthi --timeout=300s
           kubectl rollout status deployment/prakruthi-web -n prakruthi --timeout=300s
           kubectl rollout status deployment/prakruthi-admin -n prakruthi --timeout=300s
+
+          kubectl get pods -n prakruthi
+          kubectl get svc -n prakruthi
+
+          EOF
 
       - name: Health check
         run: |
