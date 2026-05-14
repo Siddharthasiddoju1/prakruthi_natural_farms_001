@@ -45,10 +45,26 @@ ENV PORT=4000
 EXPOSE 4000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:4000/health || exit 1
+
+# ✅ Create migration initialization script
+RUN cat > /app/init.sh << 'EOF'
+#!/bin/sh
+set -e
+
+echo "🔄 Running database migrations..."
+npx prisma migrate deploy --skip-generate
+
+echo "✅ Migrations completed!"
+echo "🚀 Starting API server..."
+exec node dist/server.js
+EOF
+
+RUN chmod +x /app/init.sh
 
 # Switch to non-root user
 USER appuser
 
-CMD ["node", "dist/server.js"]
+# ✅ Run migrations on container startup
+CMD ["/app/init.sh"]

@@ -9,11 +9,27 @@ import { subscriptionsRouter } from "./routes/subscriptions";
 import { ordersRouter } from "./routes/orders";
 
 const app = express();
-app.use(cors());
+
+// ✅ Environment-aware CORS configuration
+const corsOrigins = (process.env.CORS_ORIGIN || "http://localhost:4000").split(",").map(origin => origin.trim());
+
+const corsOptions = {
+  origin: corsOrigins,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "prakruthi-api" });
+  res.json({ 
+    ok: true, 
+    service: "prakruthi-api",
+    environment: process.env.NODE_ENV || "development",
+    timestamp: new Date().toISOString()
+  });
 });
 
 app.use("/api/auth", authRouter);
@@ -25,6 +41,8 @@ app.use("/api/subscriptions", subscriptionsRouter);
 app.use("/api/orders", ordersRouter);
 
 const port = process.env.PORT || 4000;
-app.listen(port, () => {
-  console.log(`API running on port ${port}`);
+app.listen(port, "0.0.0.0", () => {
+  console.log(`✅ API running on port ${port}`);
+  console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`🔐 CORS Origins: ${corsOrigins.join(", ")}`);
 });

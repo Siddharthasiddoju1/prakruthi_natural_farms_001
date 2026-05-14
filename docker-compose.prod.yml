@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # PostgreSQL Database (matching production RDS)
+  # ============================================
+  db:
+    image: postgres:15-alpine
+    container_name: prakruthi-db-prod
+    environment:
+      POSTGRES_USER: prakruthi
+      POSTGRES_PASSWORD: YourStrongPassword123
+      POSTGRES_DB: prakruthi_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prakruthi -d prakruthi_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - prakruthi-network
+
+  # ============================================
+  # API Service
+  # ============================================
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    container_name: prakruthi-api-prod
+    environment:
+      DATABASE_PROVIDER: postgresql
+      DATABASE_URL: postgresql://prakruthi:YourStrongPassword123@db:5432/prakruthi_db
+      JWT_SECRET: test-jwt-secret-change-in-production
+      PORT: 4000
+      NODE_ENV: production
+      OTP_PROVIDER: mock
+      CORS_ORIGIN: "http://localhost:3000,http://localhost:3001"
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - prakruthi-network
+    restart: unless-stopped
+
+  # ============================================
+  # Web Frontend
+  # ============================================
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: prakruthi-web-prod
+    ports:
+      - "3000:80"
+    environment:
+      VITE_API_BASE_URL: http://localhost:4000/api
+    depends_on:
+      - api
+    networks:
+      - prakruthi-network
+    restart: unless-stopped
+
+  # ============================================
+  # Admin Dashboard
+  # ============================================
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+    container_name: prakruthi-admin-prod
+    ports:
+      - "3001:80"
+    environment:
+      VITE_API_BASE_URL: http://localhost:4000/api
+    depends_on:
+      - api
+    networks:
+      - prakruthi-network
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+
+networks:
+  prakruthi-network:
+    driver: bridge
